@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Untitled</title>
+    
+
+  </head>
+    
+  <body>
+  <!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pomodoro Timer</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --card:#0b1220;
+    --muted:#94a3b8;
+    --accent:#ff6b6b;
+    --accent-2:#6be3ff;
+    --glass: rgba(255,255,255,0.03);
+    --glass-2: rgba(255,255,255,0.02);
+    --radius:14px;
+    --shadow: 0 6px 30px rgba(2,6,23,0.6);
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  html,body{height:100%;margin:0;background:
+    radial-gradient(1000px 600px at 10% 10%, rgba(107,227,255,0.04), transparent 10%),
+    linear-gradient(180deg,#071025 0%, #081226 40%, #041021 100%), color:var(--muted);}
+  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;}
+  .card{
+    width:100%;
+    max-width:980px;
+    background:linear-gradient(180deg,var(--card), #061019);
+    border-radius:var(--radius);
+    padding:28px;
+    box-shadow:var(--shadow);
+    display:grid;
+    grid-template-columns: 340px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+
+  /* Left column (controls + big timer) */
+  .left{
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    padding:20px;border-radius:12px;
+    display:flex;flex-direction:column;gap:12px;
+  }
+  .clock{
+    display:flex;flex-direction:column;align-items:center;gap:12px;
+  }
+  .mode-label{font-size:14px;color:var(--muted);letter-spacing:0.6px;}
+  .time{
+    font-weight:700;font-size:72px;color:var(--accent);text-shadow:0 4px 18px rgba(255,107,107,0.12);
+    font-family: ui-rounded, "Segoe UI", Roboto, system-ui, -apple-system;
+  }
+  .progress-wrap{width:100%;display:flex;gap:12px;align-items:center;}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;}
+  button{
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    color:#e6eef8;border:1px solid rgba(255,255,255,0.03);padding:10px 14px;border-radius:10px;
+    cursor:pointer;font-weight:600;
+    transition:transform .08s ease,filter .12s ease;
+  }
+  button.primary{
+    background:linear-gradient(90deg,var(--accent), #ff8f8f);
+    color:#081219;border:0;
+    box-shadow: 0 6px 18px rgba(255,107,107,0.12);
+  }
+  button:active{transform:translateY(1px) scale(.998)}
+  .small{padding:8px 10px;font-size:14px;border-radius:8px}
+  .settings{
+    display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:8px;background:var(--glass-2);
+  }
+  label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px;}
+  input[type="number"]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:#eaf0ff}
+  .toggles{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .toggle{display:flex;gap:8px;align-items:center;background:var(--glass);padding:8px;border-radius:999px}
+  .info{font-size:13px;color:var(--muted);}
+
+  /* Right column (session list + settings) */
+  .right{display:flex;flex-direction:column;gap:12px;}
+  .sessions{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:12px;border-radius:12px;}
+  .session-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;}
+  .session-item + .session-item{margin-top:6px}
+  .session-item .title{color:#eaf0ff;font-weight:600}
+  .session-item .meta{color:var(--muted);font-size:13px}
+  .footer{display:flex;gap:10px;align-items:center;justify-content:space-between;padding-top:6px;color:var(--muted);font-size:13px}
+
+  /* progress ring */
+  .ring{width:120px;height:120px;position:relative;display:grid;place-items:center}
+  svg{transform:rotate(-90deg)}
+  .ring .center{
+    position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  }
+  .cycles{font-size:13px;color:var(--muted)}
+
+  @media (max-width:880px){
+    .card{grid-template-columns:1fr; padding:18px}
+    .ring{margin:auto}
+    .time{font-size:56px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" role="application" aria-label="Pomodoro Timer">
+    <div class="left" id="left">
+      <div class="clock">
+        <div class="mode-label" id="modeLabel">Work</div>
+        <div class="time" id="timeDisplay" aria-live="polite">25:00</div>
+        <div class="progress-wrap">
+          <div class="ring" aria-hidden="true">
+            <svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
+              <circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,0.06)" stroke-width="12" fill="none"></circle>
+              <circle id="progressCircle" cx="60" cy="60" r="52" stroke="url(#g1)" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="326.7256" stroke-dashoffset="0"></circle>
+              <defs>
+                <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#ff8f8f"/><stop offset="1" stop-color="#6be3ff"/></linearGradient>
+              </defs>
+            </svg>
+            <div class="center">
+              <div class="cycles" id="cycles">0 / 4</div>
+            </div>
+          </div>
+
+          <div style="flex:1">
+            <div class="controls" role="group" aria-label="Timer controls">
+              <button id="startPause" class="primary">Start</button>
+              <button id="resetBtn" class="small">Reset</button>
+              <button id="skipBtn" class="small">Skip</button>
+              <button id="soundTest" class="small">Sound</button>
+            </div>
+            <div class="info" style="margin-top:8px">Shortcuts: Space = start/pause · R = reset · N = next</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings" aria-label="Settings">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+          <label style="flex:1">
+            Work (minutes)
+            <input type="number" id="workMin" min="1" max="180" value="25" />
+          </label>
+          <label style="flex:1">
+            Short Break (min)
+            <input type="number" id="shortMin" min="1" max="60" value="5" />
+          </label>
+          <label style="flex:1">
+            Long Break (min)
+            <input type="number" id="longMin" min="1" max="60" value="15" />
+          </label>
+        </div>
+
+        <div class="toggles" style="margin-top:6px">
+          <div class="toggle"><input type="checkbox" id="autoStart" /> <label for="autoStart" style="margin:0;color:var(--muted);font-size:13px">Auto start next</label></div>
+          <div class="toggle"><input type="checkbox" id="notify" /> <label for="notify" style="margin:0;color:var(--muted);font-size:13px">Desktop notifications</label></div>
+          <div class="toggle"><input type="checkbox" id="showSeconds" /> <label for="showSeconds" style="margin:0;color:var(--muted);font-size:13px">Show seconds</label></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="sessions" aria-live="polite" aria-atomic="true" id="sessionList">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <strong style="color:#eaf0ff">Session history</strong>
+          <small style="color:var(--muted)">latest at top</small>
+        </div>
+        <div id="sessionsContainer" style="max-height:360px;overflow:auto"></div>
+        <div class="footer">
+          <div>Completed <span id="completedCount">0</span></div>
+          <div><button id="clearHistory" class="small">Clear</button></div>
+        </div>
+      </div>
+
+      <div style="padding:12px;border-radius:12px;background:var(--glass);color:var(--muted)">
+        <strong>How it works</strong>
+        <p style="margin:8px 0 0;font-size:13px">Work sessions then short breaks. After 4 work sessions you get a long break. Use the controls or keyboard shortcuts.</p>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+        <button id="exportBtn" class="small">Export CSV</button>
+        <button id="importBtn" class="small">Import CSV</button>
+        <input type="file" id="importFile" accept=".csv" style="display:none" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Pomodoro Timer
+   - Uses timestamp-based ticks to avoid drift
+   - Saves settings & history to localStorage
+   - Keyboard shortcuts: Space (start/pause), R (reset), N (next/skip)
+*/
+(() => {
+  // Elements
+  const timeDisplay = document.getElementById('timeDisplay');
+  const modeLabel = document.getElementById('modeLabel');
+  const startPause = document.getElementById('startPause');
+  const resetBtn = document.getElementById('resetBtn');
+  const skipBtn = document.getElementById('skipBtn');
+  const workMin = document.getElementById('workMin');
+  const shortMin = document.getElementById('shortMin');
+  const longMin = document.getElementById('longMin');
+  const autoStart = document.getElementById('autoStart');
+  const notifyCheckbox = document.getElementById('notify');
+  const showSeconds = document.getElementById('showSeconds');
+  const progressCircle = document.getElementById('progressCircle');
+  const cyclesLabel = document.getElementById('cycles');
+  const sessionsContainer = document.getElementById('sessionsContainer');
+  const completedCount = document.getElementById('completedCount');
+  const soundTest = document.getElementById('soundTest');
+  const clearHistory = document.getElementById('clearHistory');
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+
+  // State
+  const DEFAULTS = {
+    work:25, short:5, long:15, autoStart:false, notify:false, showSeconds:false
+  };
+  let settings = Object.assign({}, DEFAULTS);
+  let mode = 'work'; // 'work', 'short', 'long'
+  let running = false;
+  let cycles = 0; // completed work sessions in the current round (0..3)
+  let totalCompleted = 0;
+  let sessionHistory = []; // {mode, startISO, endISO, lengthMin}
+  let endTime = null; // timestamp ms when current session ends
+  let remaining = 0; // ms remaining
+  let durationMs = 0;
+  let tickHandle = null;
+
+  // Progress circle circumference (r=52 -> 2πr)
+  const CIRC = 2 * Math.PI * 52;
+
+  // Audio beep (WebAudio)
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function playBeep(f=880, duration=0.15, volume=0.12){
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.frequency.value = f;
+    o.type = 'sine';
+    g.gain.value = volume;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    o.stop(audioCtx.currentTime + duration + 0.02);
+  }
+
+  // Storage
+  function saveSettings(){
+    const s = {
+      work: +workMin.value,
+      short: +shortMin.value,
+      long: +longMin.value,
+      autoStart: !!autoStart.checked,
+      notify: !!notifyCheckbox.checked,
+      showSeconds: !!showSeconds.checked
+    };
+    settings = s;
+    localStorage.setItem('pomodoro:settings', JSON.stringify(s));
+  }
+  function loadSettings(){
+    const raw = localStorage.getItem('pomodoro:settings');
+    if(raw){
+      try{
+        const s = JSON.parse(raw);
+        Object.assign(settings, s);
+      }catch(e){}
+    }
+    workMin.value = settings.work;
+    shortMin.value = settings.short;
+    longMin.value = settings.long;
+    autoStart.checked = settings.autoStart;
+    notifyCheckbox.checked = settings.notify;
+    showSeconds.checked = settings.showSeconds;
+  }
+
+  function saveHistory(){
+    localStorage.setItem('pomodoro:history', JSON.stringify(sessionHistory));
+    localStorage.setItem('pomodoro:completed', String(totalCompleted));
+  }
+  function loadHistory(){
+    const raw = localStorage.getItem('pomodoro:history');
+    if(raw){
+      try{ sessionHistory = JSON.parse(raw) }catch(e){ sessionHistory = [] }
+    }
+    totalCompleted = +localStorage.getItem('pomodoro:completed') || 0;
+    renderHistory();
+  }
+
+  // UI updates
+  function formatTime(ms){
+    const totalSeconds = Math.max(0, Math.ceil(ms/1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if(settings.showSeconds){
+      return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    }else{
+      return `${minutes}:${String(seconds).padStart(2,'0')}`;
+    }
+  }
+
+  function setMode(newMode){
+    mode = newMode;
+    modeLabel.textContent = (mode === 'work') ? 'Work' : (mode === 'short') ? 'Short break' : 'Long break';
+    // set duration
+    const mins = (mode === 'work') ? settings.work : (mode === 'short') ? settings.short : settings.long;
+    durationMs = mins * 60 * 1000;
+    // reset remaining
+    remaining = durationMs;
+    updateDisplay();
+    updateProgress();
+  }
+
+  function updateDisplay(){
+    timeDisplay.textContent = formatTime(remaining);
+    cyclesLabel.textContent = `${cycles} / 4`;
+    startPause.textContent = running ? 'Pause' : 'Start';
+    completedCount.textContent = totalCompleted;
+  }
+
+  function updateProgress(){
+    const pct = (durationMs > 0) ? (1 - (remaining / durationMs)) : 0;
+    const dash = Math.max(0, CIRC * (1 - pct));
+    progressCircle.style.strokeDasharray = CIRC.toFixed(4);
+    progressCircle.style.strokeDashoffset = dash.toFixed(4);
+  }
+
+  function addHistory(entry){
+    sessionHistory.unshift(entry);
+    // cap to 200 entries
+    if(sessionHistory.length > 200) sessionHistory.pop();
+    if(entry.mode === 'work') totalCompleted++;
+    saveHistory();
+    renderHistory();
+  }
+
+  function renderHistory(){
+    sessionsContainer.innerHTML = '';
+    if(sessionHistory.length === 0){
+      sessionsContainer.innerHTML = '<div style="color:var(--muted);padding:8px">No sessions yet</div>';
+      completedCount.textContent = totalCompleted;
+      return;
+    }
+    for(const s of sessionHistory){
+      const d = document.createElement('div');
+      d.className = 'session-item';
+      const left = document.createElement('div');
+      left.innerHTML = `<div class="title">${s.mode === 'work' ? 'Work' : s.mode === 'short' ? 'Short break' : 'Long break'}</div><div class="meta">${new Date(s.startISO).toLocaleString()}</div>`;
+      const right = document.createElement('div');
+      right.innerHTML = `<div class="meta">${s.lengthMin} min</div>`;
+      d.appendChild(left); d.appendChild(right);
+      sessionsContainer.appendChild(d);
+    }
+    completedCount.textContent = totalCompleted;
+  }
+
+  // Timer Tick using timestamps
+  function startTimer(){
+    if(running) return;
+    running = true;
+    // if no endTime defined, set it now
+    if(!endTime){
+      endTime = Date.now() + remaining;
+    } else {
+      // adjust endTime based on current remaining (maintain continuity)
+      endTime = Date.now() + remaining;
+    }
+    updateDisplay();
+    tick();
+  }
+
+  function tick(){
+    if(tickHandle) cancelAnimationFrame(tickHandle);
+    function frame(){
+      const now = Date.now();
+      remaining = Math.max(0, endTime - now);
+      updateDisplay();
+      updateProgress();
+      if(remaining <= 0){
+        running = false;
+        endTime = null;
+        onSessionEnd();
+        return;
+      }
+      tickHandle = requestAnimationFrame(frame);
+    }
+    tickHandle = requestAnimationFrame(frame);
+  }
+
+  function pauseTimer(){
+    if(!running) return;
+    running = false;
+    if(tickHandle) cancelAnimationFrame(tickHandle);
+    // remaining already up-to-date from tick; clear endTime so resume sets new end
+    endTime = null;
+    updateDisplay();
+  }
+
+  function resetTimer(){
+    if(tickHandle) cancelAnimationFrame(tickHandle);
+    running = false;
+    endTime = null;
+    // reset to current mode's duration
+    const mins = (mode === 'work') ? settings.work : (mode === 'short') ? settings.short : settings.long;
+    durationMs = mins * 60 * 1000;
+    remaining = durationMs;
+    updateDisplay();
+    updateProgress();
+  }
+
+  function skipToNext(){
+    // treat skip as ending current session
+    if(tickHandle) cancelAnimationFrame(tickHandle);
+    running = false;
+    endTime = null;
+    onSessionEnd(true); // skipped flag
+  }
+
+  function onSessionEnd(skipped=false){
+    // record history
+    const endISO = new Date().toISOString();
+    const lengthMin = Math.round((durationMs - remaining) / 60000) || Math.round(durationMs/60000);
+    addHistory({mode, startISO: new Date(Date.now() - (durationMs - remaining)).toISOString(), endISO, lengthMin});
+    playBeep(mode === 'work' ? 1200 : 700, 0.2);
+    // notify
+    if(settings.notify && Notification.permission === 'granted'){
+      const title = (mode === 'work') ? 'Work session finished' : (mode === 'short') ? 'Short break finished' : 'Long break finished';
+      new Notification(title, { body: skipped ? 'Skipped' : 'Session complete', silent: true });
+    }
+
+    // transition logic
+    if(mode === 'work'){
+      cycles++;
+      if(cycles >= 4){
+        // go to long break
+        setMode('long');
+        cycles = 0;
+      }else{
+        setMode('short');
+      }
+    }else{
+      // after any break, go to work
+      setMode('work');
+    }
+    saveSettings(); // persist latest settings
+
+    // auto-start if enabled
+    if(settings.autoStart){
+      startTimer();
+    } else {
+      updateDisplay();
+      updateProgress();
+    }
+  }
+
+  // Event handlers
+  startPause.addEventListener('click', () => {
+    if(!running){
+      // resume audio context on user interaction if suspended
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+      startTimer();
+    } else {
+      pauseTimer();
+    }
+  });
+  resetBtn.addEventListener('click', () => {
+    resetTimer();
+  });
+  skipBtn.addEventListener('click', () => skipToNext());
+  soundTest.addEventListener('click', () => {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    playBeep();
+  });
+
+  // settings save on change
+  [workMin, shortMin, longMin, autoStart, notifyCheckbox, showSeconds].forEach(el=>{
+    el.addEventListener('change', () => {
+      saveSettings();
+      // apply immediate changes for mode durations unless running
+      if(!running){
+        // if mode durations changed, update remaining & duration accordingly
+        const mins = (mode === 'work') ? settings.work : (mode === 'short') ? settings.short : settings.long;
+        durationMs = mins * 60 * 1000;
+        remaining = durationMs;
+        updateDisplay();
+        updateProgress();
+      }
+    });
+  });
+
+  // keyboard shortcuts
+  window.addEventListener('keydown', (e) => {
+    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if(e.code === 'Space'){ e.preventDefault(); startPause.click(); }
+    if(e.key === 'r' || e.key === 'R') resetBtn.click();
+    if(e.key === 'n' || e.key === 'N') skipBtn.click();
+  });
+
+  // clear history
+  clearHistory.addEventListener('click', () => {
+    sessionHistory = [];
+    totalCompleted = 0;
+    saveHistory();
+    renderHistory();
+  });
+
+  // export/import CSV
+  exportBtn.addEventListener('click', () => {
+    const rows = [['mode','startISO','endISO','lengthMin']];
+    for(const s of sessionHistory){
+      rows.push([s.mode,s.startISO,s.endISO,s.lengthMin]);
+    }
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'pomodoro_history.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
+  importBtn.addEventListener('click', ()=> importFile.click());
+  importFile.addEventListener('change', (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result;
+      const rows = text.split(/\r?\n/).filter(Boolean).map(r => r.split(',').map(c => c.replace(/^"|"$/g,'')));
+      const parsed = [];
+      for(let i=1;i<rows.length;i++){
+        const [modeS, startISO, endISO, lengthMin] = rows[i] || [];
+        if(!modeS || !startISO) continue;
+        parsed.push({mode:modeS.trim(), startISO:startISO.trim(), endISO:(endISO||'').trim(), lengthMin: Number(lengthMin)||0});
+      }
+      sessionHistory = parsed.concat(sessionHistory).slice(0,200);
+      saveHistory();
+      renderHistory();
+    };
+    reader.readAsText(f);
+  });
+
+  // Notifications permission
+  notifyCheckbox.addEventListener('change', () => {
+    if(notifyCheckbox.checked && Notification.permission !== 'granted'){
+      Notification.requestPermission().then(p => {
+        if(p !== 'granted') notifyCheckbox.checked = false;
+        saveSettings();
+      });
+    } else {
+      saveSettings();
+    }
+  });
+
+  // Initialize
+  function init(){
+    loadSettings();
+    loadHistory();
+    setMode('work');
+    updateDisplay();
+    updateProgress();
+    // restore running state? (we keep not running)
+    // apply visual circle dash array
+    progressCircle.style.strokeDasharray = CIRC.toFixed(4);
+  }
+
+  init();
+
+  // expose for debugging (optional)
+  window.pomodoro = {
+    start: startTimer, pause: pauseTimer, reset: resetTimer, skip: skipToNext,
+    state: () => ({mode, running, remaining, cycles, settings})
+  };
+
+})();
+</script>
+</body>
+</html>
+    
+  </body>
+  
+</html>
